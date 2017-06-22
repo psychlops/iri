@@ -10,18 +10,21 @@ public class PearlDiver {
     private static final int CURL_HASH_LENGTH = 243;
     private static final int CURL_STATE_LENGTH = CURL_HASH_LENGTH * 3;
 
-	private static final long HIGH_BITS = 0b1111111111111111111111111111111111111111111111111111111111111111L;
-	private static final long LOW_BITS = 0b0000000000000000000000000000000000000000000000000000000000000000L;
+    private static final long HIGH_BITS = 0b1111111111111111111111111111111111111111111111111111111111111111L;
+    //private static final long LOW_BITS = 0b0000000000000000000000000000000000000000000000000000000000000000L;
 
     private static final int RUNNING = 0;
     private static final int CANCELLED = 1;
     private static final int COMPLETED = 2;
 
     private volatile int state;
+    private final Object syncObj = new Object();
 
-    public synchronized void cancel() {
-        state = CANCELLED;
-        notifyAll();
+    public void cancel() {
+        synchronized (syncObj){
+            state = CANCELLED;
+            syncObj.notifyAll();            
+        }
     }
 
     public synchronized boolean search(final int[] transactionTrits, final int minWeightMagnitude, int numberOfThreads) {
@@ -33,7 +36,9 @@ public class PearlDiver {
             throw new RuntimeException("Invalid min weight magnitude: " + minWeightMagnitude);
         }
 
-        state = RUNNING;
+        synchronized (syncObj) {
+            state = RUNNING;
+        }
 
         final long[] midCurlStateLow = new long[CURL_STATE_LENGTH], midCurlStateHigh = new long[CURL_STATE_LENGTH];
 
@@ -95,7 +100,7 @@ public class PearlDiver {
         }
 
         Thread[] workers = new Thread[numberOfThreads];
-		
+        
         while (numberOfThreads-- > 0) {
 
             final int threadIndex = numberOfThreads;
@@ -110,7 +115,7 @@ public class PearlDiver {
 
                 final long[] curlStateLow = new long[CURL_STATE_LENGTH], curlStateHigh = new long[CURL_STATE_LENGTH];
                 final long[] curlScratchpadLow = new long[CURL_STATE_LENGTH], curlScratchpadHigh = new long[CURL_STATE_LENGTH];
-				long mask, outMask = 1;
+                long mask, outMask = 1;
                 while (state == RUNNING) {
 
                     increment(midCurlStateCopyLow, midCurlStateCopyHigh, (CURL_HASH_LENGTH / 3) * 2, CURL_HASH_LENGTH);
@@ -118,30 +123,28 @@ public class PearlDiver {
                     System.arraycopy(midCurlStateCopyHigh, 0, curlStateHigh, 0, CURL_STATE_LENGTH);
                     transform(curlStateLow, curlStateHigh, curlScratchpadLow, curlScratchpadHigh);
 
-					mask = HIGH_BITS;
-					for (int i = minWeightMagnitude; i-- > 0;) {
-						mask &= ~(curlStateLow[CURL_HASH_LENGTH - 1 - i] ^ curlStateHigh[CURL_HASH_LENGTH - 1 - i]);
-						if ( mask == 0) {
-							break;
+                    mask = HIGH_BITS;
+                    for (int i = minWeightMagnitude; i-- > 0;) {
+                        mask &= ~(curlStateLow[CURL_HASH_LENGTH - 1 - i] ^ curlStateHigh[CURL_HASH_LENGTH - 1 - i]);
+                        if ( mask == 0) {
+                            break;
+                        }
+                    }
+                    if(mask == 0) continue;
+
+                    synchronized (syncObj) {
+                        if (state == RUNNING) {
+                            state = COMPLETED;
+                            while((outMask & mask) == 0) {
+                                outMask <<= 1;
+                            }
+                            for (int i = 0; i < CURL_HASH_LENGTH; i++) {
+                                transactionTrits[TRANSACTION_LENGTH - CURL_HASH_LENGTH + i] = (midCurlStateCopyLow[i] & outMask) == 0 ? 1: (midCurlStateCopyHigh[i] & outMask) == 0 ? -1 : 0;
+                            }
+							syncObj.notifyAll();
 						}
-					}
-					if(mask == 0) continue;
-					synchronized (this) {
-
-						if (state == RUNNING) {
-
-							state = COMPLETED;
-
-							while((outMask & mask) == 0) {
-								outMask <<= 1;
-							}
-							for (int i = 0; i < CURL_HASH_LENGTH; i++) {
-								transactionTrits[TRANSACTION_LENGTH - CURL_HASH_LENGTH + i] = (midCurlStateCopyLow[i] & outMask) == 0 ? 1: (midCurlStateCopyHigh[i] & outMask) == 0 ? -1 : 0;
-							}
-							notifyAll();
-						}
-					}
-					break;
+                    }
+                    break;
                 }
             }));
             workers[threadIndex] = worker;
@@ -149,21 +152,27 @@ public class PearlDiver {
         }
 
         try {
-            while (state == RUNNING) {
-                wait();
+            synchronized (syncObj) {
+                if(state == RUNNING) {
+                    syncObj.wait();
+                }
             }
         } catch (final InterruptedException e) {
-            state = CANCELLED;
-        }
-
-        for (int i = 0; i < workers.length; i++) {
-            try {
-                workers[i].join();
-            } catch (final InterruptedException e) {
+            synchronized (syncObj) {
                 state = CANCELLED;
             }
         }
-		
+
+        for (Thread worker : workers) {
+            try {
+                worker.join();
+            } catch (final InterruptedException e) {
+                synchronized (syncObj) {
+                    state = CANCELLED;
+                }
+            }
+        }
+        
         return state == COMPLETED;
     }
 
@@ -179,7 +188,12 @@ public class PearlDiver {
 
                 final long alpha = curlScratchpadLow[curlScratchpadIndex];
                 final long beta = curlScratchpadHigh[curlScratchpadIndex];
-                final long gamma = curlScratchpadHigh[curlScratchpadIndex += (curlScratchpadIndex < 365 ? 364 : -365)];
+                if (curlScratchpadIndex < 365) {
+                    curlScratchpadIndex += 364;
+                } else {
+                    curlScratchpadIndex += -365;
+                }
+                final long gamma = curlScratchpadHigh[curlScratchpadIndex];
                 final long delta = (alpha | (~gamma)) & (curlScratchpadLow[curlScratchpadIndex] ^ beta);
 
                 curlStateLow[curlStateIndex] = ~delta;

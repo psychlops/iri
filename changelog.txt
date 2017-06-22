@@ -1,3 +1,61 @@
+1.2.1
+    - cleaner API messaging
+
+1.2.0
+    - Mainnet release with MWM 15
+    - Snapshot
+    - Manual claims
+
+1.1.4.3
+    - support for security 3 txs
+    - fixed db batch saving bug
+    - rescan feature added
+
+1.1.4.2
+    - Fixed memory leaks
+    - maxDepth added to TipSelection
+
+1.1.4.1
+    - Fixed claiming issue
+
+1.1.4
+    - Mainnet Release with MWM 13
+
+1.1.3.10
+    - Fixed memory allocation
+    - Refactored classes away from static instances to allow for greater integration testing
+    - Added check to prevent confirmed bundles from being re-confirmed on replay
+
+1.1.3.9
+    - Vastly refactored persistency and solidity functions.
+	
+1.1.3.4
+    - Added RocksDB initialization logs
+
+1.1.3.4
+    - RocksDB dispose fixes
+
+1.1.3.3
+    - Simulation upgrades
+
+1.1.3.2
+    - RocksDB integration
+	
+1.1.3.1
+    - TCP transaction transport and replicator
+
+1.1.2.9:
+    - Program argument to set timestamp filter for incoming txs
+
+1.1.2.8:
+    - Tip selection with depth control
+
+1.1.2.7:
+    - More fixes to tip selector
+
+1.1.2.6:
+    - Merge with dev branch
+	- Fixes tip selector
 
 1.1.2.3:
 
