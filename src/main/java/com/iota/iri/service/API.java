@@ -271,8 +271,7 @@ public class API {
                     }
 
                     if (invalidSubtangleStatus()) {
-                        return ErrorResponse
-                                .create("This operations cannot be executed: The subtangle has not been updated yet.");
+                        return ErrorResponse.create("This operations cannot be executed: The subtangle has not been updated yet.");
                     }
                     return getNewInclusionStateStatement(trans, tps);
                 }
@@ -280,8 +279,8 @@ public class API {
                     return getNeighborsStatement();
                 }
                 case "getNodeInfo": {
-                    String name = instance.configuration.booling(Configuration.DefaultConfSettings.TESTNET) ? IRI.TESTNET_NAME : IRI.MAINNET_NAME;
-                    return GetNodeInfoResponse.create(name, IRI.VERSION, Runtime.getRuntime().availableProcessors(),
+                    String name = instance.configuration.booling(Configuration.DefaultConfSettings.TESTNET) ? Configuration.TESTNET_NAME : Configuration.MAINNET_NAME;
+                    return GetNodeInfoResponse.create(name, Configuration.VERSION, Runtime.getRuntime().availableProcessors(),
                             Runtime.getRuntime().freeMemory(), System.getProperty("java.version"), Runtime.getRuntime().maxMemory(),
                             Runtime.getRuntime().totalMemory(), instance.milestone.latestMilestone, instance.milestone.latestMilestoneIndex,
                             instance.milestone.latestSolidSubtangleMilestone, instance.milestone.latestSolidSubtangleMilestoneIndex,

@@ -7,9 +7,6 @@ import com.iota.iri.model.Hash;
 import com.iota.iri.network.Node;
 import com.iota.iri.network.UDPReceiver;
 import com.iota.iri.network.replicator.Replicator;
-import com.iota.iri.network.replicator.ReplicatorSinkPool;
-import com.iota.iri.network.replicator.ReplicatorSourcePool;
-import com.iota.iri.service.API;
 import com.iota.iri.service.TipsManager;
 import com.iota.iri.storage.FileExportProvider;
 import com.iota.iri.storage.Indexable;
@@ -17,7 +14,9 @@ import com.iota.iri.storage.Persistable;
 import com.iota.iri.storage.Tangle;
 import com.iota.iri.storage.rocksDB.RocksDBPersistenceProvider;
 import com.iota.iri.utils.Pair;
+
 import org.apache.commons.lang3.NotImplementedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
